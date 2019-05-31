@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <title>Simple Recorder.js demo with record, stop and pause</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="static/style.css">
+  </head>
+  <body>
+
+
+    <h1> 孤立词语音识别系统</h1>
+
+    <style>
+        canvas {
+            margin-top: 10px;
+            display: inline-block;
+            background: #ffffff;
+            width: 150%;
+            height: 45%;
+            box-shadow: 0px 0px 10px blue;
+        }
+
+        #viz {
+            height: 80%;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-around;
+            align-items: center;
+        }
+
+         @media (orientation: landscape) {
+            body {
+                flex-direction: row;
+            }
+
+
+
+            #viz {
+                height: 100%;
+                width: 100%;
+            }
+        }
+
+
+
+    </style>
+
+    <div id="viz" width="1024">
+        <canvas id="analyser" width="1024" height="500"></canvas>
+    </div>
+
+    <div id="controls">
+
+        <button id="recordButton">Record</button>
+  	 <button id="stopButton" disabled>Stop</button>
+    </div>
+    <div id="result">识别结果：</div>
+
+  	<ol id="recordingsList"></ol>
+
+
+
+    <!-- inserting these scripts at the end to be able to use all the elements in the DOM -->
+  	<script src="/static/recorderjs/recorder.js"></script>
+  	<script src="/static/app.js"></script>
+    <script src="/static/waveview.js"></script>
+  </body>
+</html>

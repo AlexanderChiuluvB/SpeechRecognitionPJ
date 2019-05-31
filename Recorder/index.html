@@ -1,0 +1,569 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
+
+<title>Recorder测试</title>
+
+</head>
+
+<body>
+<!--加载核心库，其他类型支持库在下面根据用户点击选择加载-->
+<script src="src/recorder-core.js"></script>
+
+<!--加载可选扩展库-->
+<script src="src/extensions/waveview.js"></script>
+
+
+<style>
+body{
+	word-wrap: break-word;
+}
+pre{
+	white-space:pre-wrap;
+}
+.pd{
+	padding:0 0 6px 0;
+}
+.btns button{
+	padding: 5px 10px;
+}
+</style>
+
+<script>
+//兼容环境
+var PageLM="2019-4-18 09:31:26";
+
+function BuildHtml(html,o,notEncode,loop){return o||(o={}),html=(null==html?"":html+"").replace(/\{(fn:)?(:)?(.+?)\}/gi,function(a,b,c,code){try{var v=eval(b?code:"o."+code);return v=void 0===v?"":v+"",c||notEncode?v:v}catch(e){return console.log("BuildHtml Fail",a+"\n"+e.stack),""}}),loop&&/\{(fn:)?(.+?)\}/.test(html)&&(html=BuildHtml(html,o,notEncode,loop)),html};
+function RandomKey(){
+	return "randomkey"+(RandomKey.idx++);
+};
+RandomKey.idx=0;
+</script>
+<script src="https://cdn.bootcss.com/jquery/1.9.1/jquery.min.js"></script>
+
+
+<div>
+	<style>
+		.navItem{
+			display:inline-block;
+			width:40%;
+			max-width:300px;
+			margin-right:20px;
+			vertical-align: top;
+			background:#eee;
+			border-bottom: 5px solid #ccc;
+			color:#666;
+			text-decoration:none;
+			border-radius: 8px;
+			padding: 0 5px 3px;
+		}
+		.navItem.slc{
+			border-bottom: 5px solid #0B1;
+			color:#000;
+		}
+		.navItem:hover{
+			color:#d44;
+		}
+		.navTitle{
+			text-align: center;
+			font-size:18px;
+			font-weight: bold;
+		}
+		.navDesc{
+			font-size:12px;
+		}
+	</style>
+	<a class="navItem slc" href="https://xiangyuecn.github.io/Recorder/">
+		<div class="navTitle">Recorder测试</div>
+		<div class="navDesc">Recorder库使用简单，功能丰富，支持PC、Android，但IOS上仅Safari支持录音</div>
+	</a>
+	
+	<a class="navItem" href="https://jiebian.life/web/h5/github/recordapp.aspx">
+		<div class="navTitle">RecordApp测试</div>
+		<div class="navDesc">RecordApp除Recorder支持的外，IOS上支持微信网页和小程序web-view，但需要后端提供接口</div>
+	</a>
+</div>
+
+
+
+
+<!-- begin 开始copy源码 -->
+<div>
+	<div class="pd">
+		GitHub：<a href="https://github.com/xiangyuecn/Recorder">https://github.com/xiangyuecn/Recorder</a>
+	</div>
+	<div class="pd types">
+		类型:
+		<label><input type="radio" name="type" value="mp3" engine="mp3,mp3-engine" class="initType" checked>mp3</label>
+		<label><input type="radio" name="type" value="wav" engine="wav">wav</label>
+		<label><input type="radio" name="type" value="ogg" engine="beta-ogg,beta-ogg-engine">ogg(beta)</label>
+		<label><input type="radio" name="type" value="webm" engine="beta-webm">webm(beta)</label>
+		<label><input type="radio" name="type" value="amr" engine="beta-amr,beta-amr-engine,wav">amr(beta)</label>
+	</div>
+	<div class="pd">
+		提示：<span class="typeTips">-</span>
+	</div>
+	<div class="pd">
+		比特率: <input type="text" class="bit" value="16"> kbps，越大音质越好
+	</div>
+	<div class="pd">
+		采样率: <input type="text" class="sample" value="16000"> hz，越大细节越丰富
+	</div>
+	<div class="pd btns">
+		<button onclick="recopen()">打开录音</button>
+		<button onclick="recclose()">关闭录音</button>
+	</div>
+	<div class="pd btns">
+		<button onclick="recstart()">录制</button>
+		<button onclick="recstop()">停止</button>
+		
+		<button onclick="recpause()" style="margin-left:60px">暂停</button>
+		<button onclick="recresume()">继续</button>
+	</div>
+	<div class="pd recpower">
+		<div style="height:40px;width:300px;background:#999;position:relative;">
+			<div class="recpowerx" style="height:40px;background:#0B1;position:absolute;"></div>
+			<div class="recpowert" style="padding-left:50px; line-height:40px; position: relative;"></div>
+		</div>
+	</div>
+	<div class="pd">
+		<button onclick="recstop2()">批量编码</button>
+		<input type="text" class="bits" value="8 to 96 step 8">kbps 测试音质用的，除比特率外其他参数可调整
+	</div>
+	<div class="pd">
+		<div style="height:100px;width:300px;border:1px solid #ccc;box-sizing: border-box;display:inline-block" class="recwave"></div>
+		<input type="checkbox" class="recwaveSet" checked>
+	</div>
+	
+	<hr>
+	<audio class="recPlay" style="width:100%"></audio>
+	<div class="reclog"></div>
+	<div class="recinfo"></div>
+</div>
+<script type="text/template" class="tp_recinfo">
+<hr/>
+浏览器环境情况:
+<pre>
+AudioContext:{fn:!!window.AudioContext}
+webkitAudioContext:{fn:!!window.webkitAudioContext}
+mediaDevices:{fn:!!navigator.mediaDevices}
+mediaDevices.getUserMedia:{fn:!!(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia)}
+navigator.getUserMedia:{fn:!!navigator.getUserMedia}
+navigator.webkitGetUserMedia:{fn:!!navigator.webkitGetUserMedia}
+
+UA:{fn:navigator.userAgent}
+
+Recorder库修改时间（有可能修改了忘改）:{fn:RecorderLM}
+本页面修改时间（有可能修改了忘改）：{fn:PageLM}
+
+
+
+
+</pre>
+<div>
+<hr>
+注：录音时注意观察灰色区域是否有绿色音量跳动，没有绿色跳动说明Recorder没有获取到声音数据。如果测试发现mp3没有声音，可以试一下wav格式，如果wav格式有声音，说明内置lamejs mp3编码器有问题。如果都没有，下载下来播放看看有没有。下载下来也没有声音可以反馈一下。
+</div>
+<div style="padding-top:20px">
+如果浏览器不能正常录音，并且不确定是不是这个库的问题，可以到 <a href="https://collab-project.github.io/videojs-record/examples/audio-only.html">https://collab-project.github.io/videojs-record/examples/audio-only.html</a> 试一下。
+</div>
+</script>
+
+
+
+<script>
+function reclog(s){
+	$(".reclog").prepend('<div>['+new Date().toLocaleTimeString()+']'+s+'</div>');
+};
+$(window).bind("error",function(e){
+	reclog('<span style="color:red">【Error】:<pre>'+(e.error?e.error.stack:event.message)+'</pre></span>');
+});
+</script>
+
+
+
+<script>
+var rec;
+function recopen(){
+	var type=$("[name=type]:checked").val();
+	var bit=+$(".bit").val();
+	var sample=+$(".sample").val();
+	var wave,waveSet=$(".recwaveSet")[0].checked;
+	rec=Recorder({
+		type:type
+		,bitRate:bit
+		,sampleRate:sample
+		,onProcess:function(buffers,level,time,sampleRate){
+			$(".recpowerx").css("width",level+"%");
+			$(".recpowert").html(time+"/"+level);
+			
+			waveSet && wave.input(buffers[buffers.length-1],level,sampleRate);
+		}
+	});
+	rec.open(function(){
+		reclog("已打开:"+type+" "+bit+"kbps");
+		
+		wave=Recorder.WaveView({elem:".recwave"});
+	},function(e,isUserNotAllow){
+		reclog((isUserNotAllow?"UserNotAllow，":"")+"打开失败："+e);
+	});
+};
+function recclose(){
+	if(rec){
+		rec.close(function(){
+			reclog("已关闭");
+		});
+	}
+};
+function recstart(){
+	if(rec){
+		rec.start();
+		reclog("录制中...");
+	};
+};
+function recpause(){
+	if(rec){
+		rec.pause();
+		reclog("已暂停");
+	};
+};
+function recresume(){
+	if(rec){
+		rec.resume();
+		reclog("继续录音中...");
+	};
+};
+var recblob={};
+function recstop(batCall){
+	if(rec){
+		if(!batCall){
+			reclog("正在编码"+rec.set.type+"...");
+		};
+		var t1=Date.now();
+		rec.stop(function(blob,time){
+			var id=RandomKey(16);
+			recblob[id]={blob:blob,set:$.extend({},rec.set),time:time};
+			reclog("已录制:"+intp(rec.set.bitRate,3)+"kbps "+intp(rec.set.sampleRate,5)+"hz 花"+intp(Date.now()-t1,4)+"ms编码"+intp(blob.size,6)+"b ["+rec.set.type+"]"+intp(time,6)+'ms <button onclick="recdown(\''+id+'\')">下载</button> <button onclick="recplay(\''+id+'\')">播放</button> <span class="p'+id+'"></span> <span class="d'+id+'"></span>');
+			batCall&&batCall();
+		},function(s){
+			reclog("失败："+s);
+			batCall&&batCall();
+		});
+	};
+};
+var intp=function(s,len){
+	s=s==null?"-":s+"";
+	if(s.length>=len)return s;
+	return ("_______"+s).substr(-len);
+};
+function recstop2(){
+	if(!rec||!rec.buffer){
+		reclog("需先录个音");
+		return;
+	};
+	
+	var type=$("[name=type]:checked").val();
+	var sample=+$(".sample").val();
+	var bits=/(\d+)\s+to\s+(\d+)\s+step\s+(\d+)\s*/i.exec($(".bits").val());
+	if(!bits){
+		reclog("码率列表有误，需要? to ? step ?结构");
+		return;
+	};
+	reclog("开始批量编码，请勿进行其他操作~");
+	
+	rec.set.type=type;
+	rec.set.sampleRate=sample;
+	
+	var list=[];
+	for(var i=+bits[1];i<+bits[2]+1;i+=+bits[3]){
+		list.push(i);
+	};
+	if(rec.set.type=="wav"){
+		list=[8,16];
+	};
+	
+	
+	var i=-1;
+	var bak=rec.set.bitRate;
+	var run=function(){
+		i++;
+		if(i>=list.length){
+			rec.set.bitRate=bak;
+			reclog("批量编码完成");
+			return;
+		};
+		rec.set.bitRate=list[i];
+		rec.state=1;
+		recstop(run);
+	};
+	run();
+};
+function recplay(key){
+	var o=recblob[key];
+	if(o){
+		var audio=$(".recPlay")[0];
+		audio.controls=true;
+		if(!(audio.ended || audio.paused)){
+			audio.pause();
+		};
+		o.play=(o.play||0)+1;
+		var logmsg=function(msg){
+			$(".p"+key).html('<span style="color:green">'+o.play+'</span> '+new Date().toLocaleTimeString()+" "+msg);
+		};
+		logmsg("");
+		
+		var end=function(blob){
+			audio.src=URL.createObjectURL(blob);
+			audio.play();
+		};
+		var wav=Recorder[o.set.type+"2wav"];
+		if(wav){
+			logmsg("正在转码成wav...");
+			wav(o.blob,function(blob){
+				end(blob);
+				logmsg("已转码成wav播放");
+			},function(msg){
+				logmsg("转码成wav失败："+msg);
+			});
+		}else{
+			end(o.blob);
+		};
+	};
+};
+function recdown(key){
+	var o=recblob[key];
+	if(o){
+		var cls=RandomKey(16);
+		var name="rec-"+o.time+"ms-"+o.set.bitRate+"kbps-"+o.set.sampleRate+"hz."+o.set.type;
+		
+		o.down=(o.down||0)+1;
+		$(".d"+key).html('<span style="color:red">'+o.down+'</span> <span class="'+cls+'"> 没弹下载？试一下链接或复制文本<button onclick="recdown64(\''+key+'\',\''+cls+'\')">生成Base64文本</button></span>');
+		
+		var downA=document.createElement("A");
+		downA.innerHTML="下载 "+name;
+		downA.href=URL.createObjectURL(o.blob);
+		downA.download=name;
+		$("."+cls).prepend(downA);
+		downA.click();
+	};
+};
+function recdown64(key, cls){
+	var o=recblob[key];
+	
+	var reader = new FileReader();
+	reader.onloadend = function() {
+		var id=RandomKey(16);
+		$("."+cls).append('<textarea class="'+id+'"></textarea>');
+		$("."+id).val(reader.result);
+	};
+	reader.readAsDataURL(o.blob);
+};
+$(".recinfo").html(BuildHtml($(".tp_recinfo").html()));
+reclog("点击打开录音开始哦，此浏览器<span style='color:"+(Recorder.Support()?"green'>":"red'>不")+"支持录音</span>");
+reclog("WaveView Extensions已启用");
+</script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<hr>
+<div>
+<h3>移动端js运行简易控制台</h3>
+<textarea id="cmdExecTxt" style="width:300px;height:160px;" placeholder="js代码，为一段表达式，可以返回结果显示。异步可读写JsVal.value，为结果输入框内容">(navigator.webkitGetUserMedia||navigator.getUserMedia).call(navigator,
+{audio:true}
+,function(){
+	JsVal.value+="\n支持录音";
+	console.log(JsVal.value);
+},function(e){
+	JsVal.value+="\n"+(e.name||e.message)
+	console.error(e);
+});
+"wait..."</textarea>
+<input type="button" value="执行js" onclick="cmdExec()">
+<textarea id="cmdExecVal" style="width:300px;height:160px;" placeholder="运行结果"></textarea>
+<script>
+var JsVal;
+var cmdExec=function(){
+	JsVal=document.getElementById("cmdExecVal");
+	JsVal.value="";
+	
+	var cmd=document.getElementById("cmdExecTxt").value;
+	var val="";
+	try{
+		val=eval(cmd);
+	}catch(e){
+		val="执行出错："+(e.stack||e.message);
+	};
+	JsVal=document.getElementById("cmdExecVal");
+	JsVal.value+=(JsVal.value?"\n":"")+val;
+};
+</script>
+
+<h3>ConsoleX:</h3>
+<textarea class="Xlog" style="width:300px;height:160px;"></textarea>
+<script>
+var XLogInput=$(".Xlog")[0];
+(function(){
+if(!/mobile/i.test(navigator.userAgent)){
+	XLogInput.value="非移动端不开启ConsoleX引擎";
+	return;
+};
+var ConsoleX=function(tag,arr){
+	if(parent!=window){
+		parent.ConsoleX(tag,arr);
+		return;
+	};
+	
+	ConsoleX.log(tag,arr);
+};
+var logx=console.log;
+var infox=console.info;
+var warnx=console.warn;
+var errorx=console.error;
+console.log=function(){
+	ConsoleX("log",arguments);logx.apply(console,arguments);
+};
+console.info=function(){
+	ConsoleX("info",arguments);infox.apply(console,arguments);
+};
+console.warn=function(){
+	ConsoleX("warn",arguments);warnx.apply(console,arguments);
+};
+console.error=function(){
+	ConsoleX("error",arguments);errorx.apply(console,arguments);
+};
+ConsoleX.log=function(tag,arr){
+	var msg=[];
+	for(var i=0;i<arr.length;i++){
+		if(i!=0){
+			msg.push("");
+		}
+		msg.push(xobjv(arr[i],1));
+	};
+	msg.push("---↑["+tag+"]"+new Date().toLocaleTimeString()+"↑---\n");
+	XLogInput.value=msg.join("\n")+XLogInput.value;
+};
+function xobjv(v,deep){
+	if(v===null)return "null";
+	if(v==undefined)return "undefined";
+	if(typeof(v)!="object"){
+		v=v+"";
+		if(v.length<500)return v;
+		return v.substring(0,500)+"[省略"+(v.length-500)+"字]";
+	}
+	
+	if(deep&&deep<=3){
+		v= xobj(v,deep+1);
+		if(deep==1){
+			return xobjv(v);
+		};
+		return v;
+	}
+	return xobjv(v+"");
+};
+function xobj(obj,deep){
+	if($.isArray(obj)){
+		var arr=[];
+		for(var i=0;i<obj.length;i++){
+			arr.push(xobjv(obj[i],deep));
+		};
+	}else{
+		var arr={};
+		for(var k in obj){
+			arr[k]=xobjv(obj[k],deep);
+		};
+	};
+	if(deep>2){
+		return arr;
+	};
+	return JSON.stringify(arr);
+};
+
+console.log("ConsoleX引擎已开启");
+})();
+</script>
+</div>
+<div style="padding:100px;"></div>
+<!-- end 结束copy源码 -->
+
+
+
+
+
+
+<script>
+$(function(){
+	var prev;
+	$(".types").bind("click",function(e){
+		var input=$(e.target);
+		if(input[0].nodeName=="LABEL"){
+			input=$(input).find("input");
+		};
+		if(prev!=input[0]){
+			prev=input[0];
+			loadEngine($(input));
+		};
+	});
+});
+function loadEngine(input){
+	if(input.length&&input[0].nodeName=="INPUT"){
+		var type=input.val();
+		var engines=input.attr("engine").split(",");
+		var end=function(){
+			var enc=Recorder.prototype["enc_"+type];
+			var tips=[!enc?"这个编码器无提示信息":type+"编码器"+(enc.stable?"稳定版":"beta版")+"，"+enc.testmsg];
+			tips.push('<div style="color:green">');
+			tips.push("【使用"+type+"录音需要加载的js文件】：");
+			tips.push("src/recorder-core.js, src/engine/");
+			tips.push(engines.join(".js, src/engine/"));
+			tips.push(".js</div>");
+			
+			$(".typeTips").html(tips.join(""));
+		};
+		if(!Recorder.prototype[type]){
+			reclog("正在加载"+type+"编码器...");
+			var i=-1;
+			var load=function(){
+				i++;
+				if(i>=engines.length){
+					reclog(type+"编码器已准备好");
+					end();
+					return;
+				}
+				var elem=document.createElement("script");
+				elem.setAttribute("type","text/javascript");
+				elem.setAttribute("src","src/engine/"+engines[i]+".js");
+				elem.onload=function(){
+					load();
+				};
+				$("head")[0].appendChild(elem);
+			};
+			load();
+		}else{
+			end();
+		};
+	};
+};
+loadEngine($(".initType"));
+</script>
+
+</body>
+</html>
